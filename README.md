@@ -28,19 +28,19 @@ This repository holds the project definition, and its code arrives with the firs
 
 ## 2. Repositories
 
-Modules are products and this repository is their consumer, so the two stay apart. Each module has its own repository, owner, tests and version.
+Modules are products and this repository is their consumer, so the two stay apart. Each module has its own repository, tests and version.
 
-| Repository | Holds | Maintainer |
-|---|---|---|
-| [`terraform-aws-network`](https://github.com/aromapacifico-devops/terraform-aws-network) | VPC, subnets, routes, endpoints and the link to one center | Isabella Hernández |
-| [`terraform-aws-security`](https://github.com/aromapacifico-devops/terraform-aws-security) | Platform identities, encryption keys and permanent cloud firewall rules | Santiago Valencia |
-| [`terraform-aws-telemetry-ingestion`](https://github.com/aromapacifico-devops/terraform-aws-telemetry-ingestion) | Ingestion path from IoT Core to storage and alerts | Juan Camilo Melo |
-| [`terraform-aws-farm`](https://github.com/aromapacifico-devops/terraform-aws-farm) | Reusable identity of one farm | Juan Camilo Melo |
-| [`terraform-aws-inference-function`](https://github.com/aromapacifico-devops/terraform-aws-inference-function) | Event-driven inference function pattern | Juan Pablo |
-| [`terraform-aws-module-template`](https://github.com/aromapacifico-devops/terraform-aws-module-template) | Skeleton that starts a new module | Daniel Mejía |
-| `aromapacifico-devops-infra` | Roots, bootstrap and deployment pipelines | Daniel Mejía |
-| [`.github`](https://github.com/aromapacifico-devops/.github) | Organization profile and shared workflows | Juan Pablo |
-| [`aromapacifico-devops-docs`](https://github.com/aromapacifico-devops/aromapacifico-devops-docs) | Architecture and design documents | Team |
+| Repository | Holds |
+|---|---|
+| [`terraform-aws-network`](https://github.com/aromapacifico-devops/terraform-aws-network) | VPC, subnets, routes, endpoints and the link to one center |
+| [`terraform-aws-security`](https://github.com/aromapacifico-devops/terraform-aws-security) | Platform identities, encryption keys and permanent cloud firewall rules |
+| [`terraform-aws-telemetry-ingestion`](https://github.com/aromapacifico-devops/terraform-aws-telemetry-ingestion) | Ingestion path from IoT Core to storage and alerts |
+| [`terraform-aws-farm`](https://github.com/aromapacifico-devops/terraform-aws-farm) | Reusable identity of one farm |
+| [`terraform-aws-inference-function`](https://github.com/aromapacifico-devops/terraform-aws-inference-function) | Event-driven inference function pattern |
+| [`terraform-aws-module-template`](https://github.com/aromapacifico-devops/terraform-aws-module-template) | Skeleton that starts a new module |
+| `aromapacifico-devops-infra` | Roots, bootstrap and deployment pipelines |
+| [`.github`](https://github.com/aromapacifico-devops/.github) | Organization profile and shared workflows |
+| [`aromapacifico-devops-docs`](https://github.com/aromapacifico-devops/aromapacifico-devops-docs) | Architecture and design documents |
 
 ## 3. Layout
 
@@ -51,7 +51,7 @@ aromapacifico-devops-infra/
 │   ├── dev/                  Root of development
 │   ├── test/                 Root of test
 │   └── prod/                 Root of production
-├── docs/iac-exceptions.md    Findings the team accepts, with reason and end condition
+├── docs/iac-exceptions.md    Accepted findings, with reason and end condition
 └── .github/workflows/        Plan, deploy, destroy, drift and bootstrap workflows
 ```
 
