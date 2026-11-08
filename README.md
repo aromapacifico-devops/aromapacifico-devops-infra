@@ -2,7 +2,7 @@
 
 Infrastructure repository of the Aroma Pacifico platform. It holds the root configuration of each environment and the pipelines that deploy them. Reusable code lives in versioned module repositories, so this repository only decides which module versions and which values each environment uses.
 
-This repository holds the project definition, and its code arrives with the first implementation work. The module repositories below declare the interfaces each root connects.
+Each root calls the five modules by exact tag. The modules expose their interface, and resources appear in each environment as the module code is written. The module repositories below declare the interfaces each root connects.
 
 ## Contents
 
@@ -55,7 +55,20 @@ aromapacifico-devops-infra/
 └── .github/workflows/        Plan, deploy, destroy, drift and bootstrap workflows
 ```
 
-Each directory under `envs/` holds `main.tf`, `variables.tf`, `locals.tf`, `outputs.tf`, `providers.tf`, `versions.tf`, `backend.tf`, `terraform.tfvars` and `.terraform.lock.hcl`. A separate directory per environment lets test and production pin different module versions, which is what makes promotion possible.
+Each directory under `envs/` holds `main.tf`, `variables.tf`, `locals.tf`, `outputs.tf`, `providers.tf`, `versions.tf`, `backend.tf`, `terraform.tfvars` and `.terraform.lock.hcl`. A separate directory per environment lets test and production pin different module versions, which is what makes promotion possible. `backend.tf` arrives with the state buckets, and until then each root runs with local state.
+
+Terraform is pinned to the exact version in `.terraform-version`, and every root requires at least that version. The AWS provider stays within one minor release, and the lock files hold its checksums for Linux, macOS and Windows, so a plan resolves the same build on any machine.
+
+A root validates locally with these commands.
+
+```bash
+cd envs/dev
+terraform init -backend=false
+terraform validate
+terraform plan
+```
+
+`terraform plan` needs AWS credentials for the demonstration account, such as a profile created with `aws login`.
 
 Nothing in this repository stores a secret. Account identifiers and role ARNs reach the pipeline as variables of each GitHub environment.
 
