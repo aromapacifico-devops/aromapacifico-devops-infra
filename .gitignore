@@ -10,6 +10,13 @@ override.tf.json
 *_override.tf
 *_override.tf.json
 
-# Local configuration
+# Local configuration and credentials
 .env
+.env.*
 *.auto.tfvars
+*.auto.tfvars.json
+credentials
+*.pem
+*.key
+*.p12
+*.pfx

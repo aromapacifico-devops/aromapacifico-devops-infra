@@ -4,6 +4,16 @@ project     = "aroma"
 environment = "prod"
 region      = "us-east-1"
 
+vpc_cidr           = "10.70.0.0/16"
+availability_zones = ["us-east-1a", "us-east-1b"]
+
+# Production runs the full network. The nightly destroy limits its cost.
+enable_center_link       = true
+enable_private_endpoints = true
+
+# The demonstration holds no real data, so a destroy may remove it. The pilot sets this to false in production.
+force_destroy_data = true
+
 common_tags = {
   Client      = "fnc"
   Project     = "aroma"
