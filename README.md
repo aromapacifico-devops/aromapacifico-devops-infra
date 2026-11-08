@@ -93,11 +93,24 @@ The target design gives each environment its own account inside a seven-account 
 |---|---|---|---|
 | Range | 10.50.0.0/16 | 10.60.0.0/16 | 10.70.0.0/16 |
 | Availability zones | One | One | Two |
+| VPN links and interface endpoints | Off, turned on for a session | Off, turned on for a session | On |
+| Destroy removes data | Yes | Yes | Yes in the demonstration, no in the pilot |
 | State bucket | `fnc-aroma-dev-s3-tfstate` | `fnc-aroma-test-s3-tfstate` | `fnc-aroma-prod-s3-tfstate` |
 | Platform key | `alias/fnc-aroma-dev-kms-platform` | `alias/fnc-aroma-test-kms-platform` | `alias/fnc-aroma-prod-kms-platform` |
 | State key | `dev/us-east-1/platform/terraform.tfstate` | `test/us-east-1/platform/terraform.tfstate` | `prod/us-east-1/platform/terraform.tfstate` |
 | Pipeline role | Trusts the `dev` GitHub environment | Trusts the `test` GitHub environment | Trusts the protected `prod` GitHub environment |
 | Deployment | Pipeline | Pipeline | Pipeline, after a person approves |
+
+Only `terraform.tfvars` changes between environments, and no value in it is a secret or an account identifier. The roots reject a wrong value before any plan.
+
+| Variable | Rejected when |
+|---|---|
+| `vpc_cidr` | It is not a /16 written from its network address, or it falls outside 10.0.0.0/8 or inside 10.41.0.0/16 to 10.49.0.0/16, the ranges of the collection centers |
+| `availability_zones` | It lists fewer than one or more than three zones, repeats a zone, or names a zone of another Region |
+| `common_tags` | A mandatory tag is missing, `Client`, `Project` or `Environment` differ from the governance variables, `CostCenter` is outside the documented cost centers, or `ManagedBy` is not `Terraform` |
+| `client`, `project`, `environment` | They break the code patterns the modules expect |
+
+`enable_center_link` and `enable_private_endpoints` default to `false`, and `force_destroy_data` defaults to `false` so that a root without values never deletes data. The environment files set them as the table above shows.
 
 Each environment has one root and one state. The modules of an environment reference each other, since endpoints need security groups and security groups need the VPC. Terraform resolves those references per resource inside one root, and the plan of a whole environment works from nothing, even after a destroy.
 
