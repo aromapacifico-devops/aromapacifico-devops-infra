@@ -55,20 +55,18 @@ aromapacifico-devops-infra/
 └── .github/workflows/        Plan, deploy, destroy, drift and bootstrap workflows
 ```
 
-Each directory under `envs/` holds `main.tf`, `variables.tf`, `locals.tf`, `outputs.tf`, `providers.tf`, `versions.tf`, `backend.tf`, `terraform.tfvars` and `.terraform.lock.hcl`. A separate directory per environment lets test and production pin different module versions, which is what makes promotion possible. `backend.tf` arrives with the state buckets, and until then each root runs with local state.
+Each directory under `envs/` holds `main.tf`, `variables.tf`, `locals.tf`, `outputs.tf`, `providers.tf`, `versions.tf`, `backend.tf`, `terraform.tfvars` and `.terraform.lock.hcl`. A separate directory per environment lets test and production pin different module versions, which is what makes promotion possible. `backend.tf` points each root to its own state bucket.
 
 Terraform is pinned to the exact version in `.terraform-version`, and every root requires at least that version. The AWS provider stays within one minor release, and the lock files hold its checksums for Linux, macOS and Windows, so a plan resolves the same build on any machine.
 
-A root validates locally with these commands.
+A root runs locally with these commands. `terraform init` reads the state bucket, so it needs AWS credentials for the demonstration account, such as a profile created with `aws login`. `terraform init -backend=false` is enough to validate without credentials.
 
 ```bash
 cd envs/dev
-terraform init -backend=false
+terraform init
 terraform validate
 terraform plan
 ```
-
-`terraform plan` needs AWS credentials for the demonstration account, such as a profile created with `aws login`.
 
 Nothing in this repository stores a secret. Account identifiers and role ARNs reach the pipeline as variables of each GitHub environment.
 
@@ -95,12 +93,25 @@ The target design gives each environment its own account inside a seven-account 
 |---|---|---|---|
 | Range | 10.50.0.0/16 | 10.60.0.0/16 | 10.70.0.0/16 |
 | Availability zones | One | One | Two |
-| State bucket | Own bucket | Own bucket | Own bucket |
+| State bucket | `fnc-aroma-dev-s3-tfstate` | `fnc-aroma-test-s3-tfstate` | `fnc-aroma-prod-s3-tfstate` |
+| Platform key | `alias/fnc-aroma-dev-kms-platform` | `alias/fnc-aroma-test-kms-platform` | `alias/fnc-aroma-prod-kms-platform` |
 | State key | `dev/us-east-1/platform/terraform.tfstate` | `test/us-east-1/platform/terraform.tfstate` | `prod/us-east-1/platform/terraform.tfstate` |
 | Pipeline role | Trusts the `dev` GitHub environment | Trusts the `test` GitHub environment | Trusts the protected `prod` GitHub environment |
 | Deployment | Pipeline | Pipeline | Pipeline, after a person approves |
 
-Each environment has one root and one state. The modules of an environment reference each other, since endpoints need security groups and security groups need the VPC. Terraform resolves those references per resource inside one root, and the plan of a whole environment works from nothing, even after a destroy. Locking uses the native S3 lock file.
+Each environment has one root and one state. The modules of an environment reference each other, since endpoints need security groups and security groups need the VPC. Terraform resolves those references per resource inside one root, and the plan of a whole environment works from nothing, even after a destroy.
+
+The state buckets live in bootstrap, so destroying an environment keeps its state history. Each bucket has these protections.
+
+| Protection | How |
+|---|---|
+| Encryption | The backend writes every object with the platform key of the environment, and the bucket uses the same key by default |
+| Locking | A lock file next to the state, `use_lockfile`, so a second run fails while the first holds the lock |
+| History | Versioning on, and replaced versions expire after 90 days |
+| Access | The bucket policy refuses requests without TLS and any principal other than the pipeline roles of its environment and the account operators. A role of another environment receives an explicit deny |
+| Public access | Blocked, with ACLs disabled |
+
+Pipeline roles must be named `fnc-aroma-<env>-role-pipeline-<purpose>`, since the bucket policy recognizes them by that pattern. Bootstrap keeps its own state in `fnc-aroma-shared-s3-tfstate` under `shared/us-east-1/bootstrap/terraform.tfstate`, with a fourth platform key.
 
 ## 6. From a change to production
 
@@ -144,6 +155,21 @@ Serverless resources cost almost nothing while idle, so the money goes to the VP
 | Both up for 10 sessions of 8 hours | 15.84 |
 
 `enable_center_link` and `enable_private_endpoints` turn off the two billed items for sessions that do not need them. Bootstrap also creates a budget with alerts at USD 20 and USD 50.
+
+### First bootstrap run
+
+Bootstrap costs about USD 4 a month while it exists, at USD 1 for each of the four platform keys, and the state objects weigh a few kilobytes. It creates the bucket that holds its own state, so the first run on an empty account starts with local state and then moves it.
+
+```bash
+cd bootstrap
+mv backend.tf backend.tf.off
+terraform init
+terraform apply
+mv backend.tf.off backend.tf
+terraform init -migrate-state
+```
+
+After the move, the local `terraform.tfstate` files can be deleted. Later runs use `terraform init` and `terraform apply` directly.
 
 ## 8. Checks on each pull request
 
