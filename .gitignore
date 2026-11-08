@@ -1,0 +1,15 @@
+# Terraform working files. Roots commit their lock file.
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Local configuration
+.env
+*.auto.tfvars
