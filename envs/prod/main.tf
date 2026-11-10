@@ -20,7 +20,7 @@ module "network" {
 }
 
 module "security" {
-  source = "git::https://github.com/aromapacifico-devops/terraform-aws-security.git?ref=v0.3.0"
+  source = "git::https://github.com/aromapacifico-devops/terraform-aws-security.git?ref=v0.4.0"
 
   providers = {
     aws.project = aws.principal
