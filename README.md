@@ -51,7 +51,7 @@ aromapacifico-devops-infra/
 │   ├── dev/                  Root of development
 │   ├── test/                 Root of test
 │   └── prod/                 Root of production
-├── functions/                Code packaged for the ingestion functions
+├── functions/                Code packaged for the platform functions
 ├── docs/iac-exceptions.md    Accepted findings, with reason and end condition
 └── .github/workflows/        Plan, deploy, destroy, drift and bootstrap workflows
 ```
@@ -130,7 +130,7 @@ The link carries traffic only. The names that a center uses for IoT Core, S3 and
 
 Each root deploys the telemetry ingestion path with a thing group for each department of the pilot, Cauca, Huila and Tolima, and writes the initial alert ranges once as version 1. Environments share the IoT broker and the thing registry of the account, so each rule listens only to `aroma/<env>/farm/+/+`, and each root holds its own sample farm, whose node is named `node-<env>-00001`. The certificate request of that node is `sample-node.csr`, made with `openssl` on the machine that plays the node, which keeps the private key. The certificate leaves through the `sample_certificate_pem` output and the MQTT endpoint through `iot_data_endpoint`.
 
-`functions/ingestion` stores each reading once and reports the failed messages of a batch. Range evaluation and alerts belong to the platform application, so the delivery status and delivery check functions run `functions/placeholder`, which only logs. Each plan zips both folders into `.build/` of the root.
+`functions/ingestion` stores each reading once and reports the failed messages of a batch. Range evaluation and alerts belong to the platform application, so the delivery status and delivery check functions run `functions/placeholder`, which only logs. The focus confirmation function runs the same placeholder, since the person filter, the model call and the result also belong to the platform application. Each plan zips both folders into `.build/` of the root.
 
 The push platform application holds a credential that SNS checks at creation, so the platform operator creates it with the AWS CLI after the first deployment of an environment, under the name and with the roles that the telemetry ingestion module documents.
 
