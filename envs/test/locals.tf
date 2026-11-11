@@ -238,3 +238,15 @@ locals {
   open_subnet_ids   = [for key, subnet in local.subnets : module.network.subnet_ids[key] if contains(local.open_subnet_purposes, subnet.purpose)]
   closed_subnet_ids = [for key, subnet in local.subnets : module.network.subnet_ids[key] if !contains(local.open_subnet_purposes, subnet.purpose)]
 }
+
+# Collection centers to link. Empty while enable_center_link is false, so no VPN resource is planned.
+locals {
+  center_names = { "41" = "cauca", "42" = "huila", "43" = "tolima" }
+
+  center_links = var.enable_center_link ? {
+    for center in var.linked_centers : tostring(center) => {
+      name      = local.center_names[tostring(center)]
+      public_ip = var.center_link_ips[tostring(center)]
+    }
+  } : {}
+}

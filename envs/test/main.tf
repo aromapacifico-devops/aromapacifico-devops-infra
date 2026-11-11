@@ -1,6 +1,6 @@
 # Modules of the environment, each consumed by exact tag.
 module "network" {
-  source = "git::https://github.com/aromapacifico-devops/terraform-aws-network.git?ref=v1.0.0"
+  source = "git::https://github.com/aromapacifico-devops/terraform-aws-network.git?ref=v1.1.0"
 
   providers = {
     aws.project = aws.principal
@@ -16,6 +16,9 @@ module "network" {
   enable_private_endpoints = var.enable_private_endpoints
 
   endpoint_security_group_ids = module.security.endpoint_security_group_ids
+
+  # Empty unless enable_center_link is true. Every linked center then needs its own address, see center_link_ips.
+  center_links = local.center_links
 }
 
 module "security" {

@@ -38,3 +38,28 @@ output "sample_certificate_pem" {
   description = "Public certificate of the sample farm node."
   value       = module.farm.certificate_pem
 }
+
+output "vpn_gateway_id" {
+  description = "ID of the virtual private gateway, or null when no center is linked."
+  value       = module.network.vpn_gateway_id
+}
+
+output "center_link_connection_ids" {
+  description = "VPN connection of each linked center, keyed by department code."
+  value       = module.network.center_link_connection_ids
+}
+
+output "center_link_tunnel_addresses" {
+  description = "Outside addresses of the two tunnels of each linked center, for the firewall of the center."
+  value       = module.network.center_link_tunnel_addresses
+}
+
+output "center_link_secret_arns" {
+  description = "Secret that holds the pre-shared keys of each linked center. It is a name. The installer reads the keys from Secrets Manager and they are never an output."
+  value       = module.network.center_link_secret_arns
+}
+
+output "center_link_routes" {
+  description = "Ranges routed toward each linked center."
+  value       = module.network.center_link_routes
+}

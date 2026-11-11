@@ -159,3 +159,19 @@ variable "sample_farm" {
     error_message = "sample_farm.node_id must start with node-<environment>-, so each environment keeps its own node."
   }
 }
+
+variable "center_link_ips" {
+  description = "Static public address of the firewall of each collection center, keyed by department code as a string, \"41\", \"42\" or \"43\". With enable_center_link true, every center in linked_centers needs an address and the plan fails when one is missing. An address for a center that is not in linked_centers is rejected. The addresses come from the provider of each center, and no value is invented here."
+  type        = map(string)
+  default     = {}
+
+  validation {
+    condition     = alltrue([for code in keys(var.center_link_ips) : contains([for center in var.linked_centers : tostring(center)], code)])
+    error_message = "center_link_ips may hold an address only for a center that is in linked_centers."
+  }
+
+  validation {
+    condition     = !var.enable_center_link || alltrue([for center in var.linked_centers : contains(keys(var.center_link_ips), tostring(center))])
+    error_message = "enable_center_link is true, so center_link_ips needs an address for every center in linked_centers. A center is never skipped."
+  }
+}
