@@ -40,3 +40,35 @@ variable "common_tags" {
   description = "Tags applied to every resource through the provider."
   type        = map(string)
 }
+
+variable "github_subject_prefix" {
+  description = "Prefix of the OIDC subject of the infrastructure repository, in the immutable format repo:<owner>@<owner id>/<repo>@<repo id>."
+  type        = string
+
+  validation {
+    condition     = can(regex("^repo:[A-Za-z0-9-]+@[0-9]+/[A-Za-z0-9._-]+@[0-9]+$", var.github_subject_prefix))
+    error_message = "github_subject_prefix must look like repo:<owner>@<owner id>/<repo>@<repo id>."
+  }
+}
+
+variable "budget_alert_email" {
+  description = "Address that receives the budget alerts. It comes from the shared GitHub environment or the terminal, never from a committed file."
+  type        = string
+  sensitive   = true
+
+  validation {
+    condition     = can(regex("^[^@[:space:]]+@[^@[:space:]]+\\.[^@[:space:]]+$", var.budget_alert_email))
+    error_message = "budget_alert_email must be an email address."
+  }
+}
+
+variable "budget_alert_thresholds_usd" {
+  description = "Monthly actual spend, in USD and without credits, that sends an alert. The highest is the budget limit."
+  type        = list(number)
+  default     = [20, 50]
+
+  validation {
+    condition     = length(var.budget_alert_thresholds_usd) > 0 && alltrue([for value in var.budget_alert_thresholds_usd : value > 0])
+    error_message = "budget_alert_thresholds_usd needs at least one positive amount."
+  }
+}

@@ -8,3 +8,8 @@ output "platform_key_arns" {
   description = "Platform key ARN of each scope."
   value       = { for scope, key in aws_kms_key.platform : scope => key.arn }
 }
+
+output "pipeline_role_arns" {
+  description = "Pipeline role ARN of each purpose, keyed <env>-plan, <env>-apply and bootstrap."
+  value       = { for key, role in aws_iam_role.pipeline : key => role.arn }
+}
