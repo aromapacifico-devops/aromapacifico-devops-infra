@@ -10,6 +10,9 @@ module "network" {
   project     = var.project
   environment = var.environment
 
+  # Cost center of every resource of the module, see docs/governance/tags-policies-and-budgets.md.
+  additional_tags = { CostCenter = "plataforma" }
+
   vpc_name                 = local.vpc_name
   vpc_cidr                 = var.vpc_cidr
   subnets                  = local.subnets
@@ -31,6 +34,9 @@ module "security" {
   client      = var.client
   project     = var.project
   environment = var.environment
+
+  # Cost center of every resource of the module, see docs/governance/tags-policies-and-budgets.md.
+  additional_tags = { CostCenter = "seguridad" }
 
   keys  = local.security_keys
   roles = local.security_roles
@@ -54,6 +60,9 @@ module "telemetry_ingestion" {
   client      = var.client
   project     = var.project
   environment = var.environment
+
+  # Cost center of every resource of the module, see docs/governance/tags-policies-and-budgets.md.
+  additional_tags = { CostCenter = "fincas" }
 
   data_key_arn    = module.security.data_key_arn
   objects_key_arn = module.security.objects_key_arn
@@ -85,6 +94,9 @@ module "inference_function" {
   project     = var.project
   environment = var.environment
 
+  # Cost center of every resource of the module, see docs/governance/tags-policies-and-budgets.md.
+  additional_tags = { CostCenter = "drones" }
+
   data_key_arn    = module.security.data_key_arn
   objects_key_arn = module.security.objects_key_arn
   role_arns = {
@@ -115,6 +127,9 @@ module "farm" {
   client      = var.client
   project     = var.project
   environment = var.environment
+
+  # Cost center of every resource of the module, see docs/governance/tags-policies-and-budgets.md.
+  additional_tags = { CostCenter = "fincas" }
 
   iot_policy_name  = module.telemetry_ingestion.iot_policy_name
   thing_group_name = module.telemetry_ingestion.thing_group_names[var.sample_farm.department]
