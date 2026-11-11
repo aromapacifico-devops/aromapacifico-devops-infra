@@ -103,6 +103,24 @@ resource "aws_s3_bucket_lifecycle_configuration" "state" {
     }
   }
 
+  # Saved plans can hold sensitive values, so they leave the bucket once nobody needs them.
+  rule {
+    id     = "expire-saved-plans"
+    status = "Enabled"
+
+    filter {
+      prefix = "plans/"
+    }
+
+    expiration {
+      days = var.saved_plan_days
+    }
+
+    noncurrent_version_expiration {
+      noncurrent_days = 1
+    }
+  }
+
   depends_on = [aws_s3_bucket_versioning.state]
 }
 
