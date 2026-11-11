@@ -51,11 +51,19 @@ locals {
     cases_table        = "${local.name_prefix}-ddb-cases"
     focus_function     = "${local.name_prefix}-fn-focus"
     focus_dead_letter  = "${local.name_prefix}-sqs-focus-dlq"
+    focus_queue        = "${local.name_prefix}-sqs-focus"
+    focus_rule         = "${local.name_prefix}-evr-focus"
+    platform_bus       = "${local.name_prefix}-evb-platform"
+    focus_errors_alarm = "${local.name_prefix}-alarm-focus-errors"
+    focus_dlq_alarm    = "${local.name_prefix}-alarm-focus-dlq"
   }
 
   table_arn = "arn:${local.partition}:dynamodb:${local.arn_scope}:table"
   queue_arn = "arn:${local.partition}:sqs:${local.arn_scope}"
   logs_arn  = "arn:${local.partition}:logs:${local.arn_scope}:log-group"
+
+  platform_bus_arn = "arn:${local.partition}:events:${local.arn_scope}:event-bus/${local.names.platform_bus}"
+  focus_rule_arn   = "arn:${local.partition}:events:${local.arn_scope}:rule/${local.names.platform_bus}/${local.names.focus_rule}"
 
   # SNS names the status log groups of a platform application after the application.
   push_application_path = "app/GCM/${local.names.push_application}"
@@ -113,9 +121,15 @@ locals {
         ["arn:${local.partition}:bedrock:${local.arn_scope}:inference-profile/${local.focus_model_id}"],
         [for region in local.focus_model_regions : "arn:${local.partition}:bedrock:${region}::foundation-model/${trimprefix(local.focus_model_id, "us.")}"]
       )
-      write_table_arns       = ["arn:${local.partition}:dynamodb:${local.arn_scope}:table/${local.names.cases_table}"]
-      dead_letter_queue_arns = ["arn:${local.partition}:sqs:${local.arn_scope}:${local.names.focus_dead_letter}"]
-      log_group_arns         = ["arn:${local.partition}:logs:${local.arn_scope}:log-group:/aws/lambda/${local.names.focus_function}"]
+      write_table_arns = ["arn:${local.partition}:dynamodb:${local.arn_scope}:table/${local.names.cases_table}"]
+      queue_arns       = ["${local.queue_arn}:${local.names.focus_queue}"]
+      event_bus_arns   = [local.platform_bus_arn]
+      log_group_arns   = ["arn:${local.partition}:logs:${local.arn_scope}:log-group:/aws/lambda/${local.names.focus_function}"]
+    }
+    focus_delivery = {
+      name       = "${local.name_prefix}-role-focusdlv"
+      queue_arns = ["${local.queue_arn}:${local.names.focus_queue}"]
+      source_arn = local.focus_rule_arn
     }
     delivery_status_function = {
       name             = "${local.name_prefix}-role-dlvstat"
@@ -166,6 +180,19 @@ locals {
     push_application            = local.names.push_application
     sms_config_set              = local.names.sms_config_set
     sms_status_logs             = local.names.sms_status_logs
+  }
+
+  # Names the inference function module receives.
+  inference_names = {
+    event_bus         = local.names.platform_bus
+    rule              = local.names.focus_rule
+    work_queue        = local.names.focus_queue
+    dead_letter_queue = local.names.focus_dead_letter
+    function          = local.names.focus_function
+    objects_bucket    = local.names.objects_bucket
+    cases_table       = local.names.cases_table
+    errors_alarm      = local.names.focus_errors_alarm
+    dead_letter_alarm = local.names.focus_dlq_alarm
   }
 
   thing_groups = { for department in var.departments : department => "${local.name_prefix}-thg-${department}" }

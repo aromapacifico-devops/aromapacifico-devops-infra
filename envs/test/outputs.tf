@@ -63,3 +63,18 @@ output "center_link_routes" {
   description = "Ranges routed toward each linked center."
   value       = module.network.center_link_routes
 }
+
+output "platform_event_bus_name" {
+  description = "Bus where the mission link publishes flight records."
+  value       = module.inference_function.event_bus_name
+}
+
+output "focus_work_queue_arn" {
+  description = "Work queue of the focus confirmation function."
+  value       = module.inference_function.work_queue_arn
+}
+
+output "focus_dead_letter_queue_arn" {
+  description = "Dead letter queue of the focus confirmation function."
+  value       = module.inference_function.dead_letter_queue_arn
+}
