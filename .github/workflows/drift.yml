@@ -1,0 +1,46 @@
+# Compares each environment that is up with the code, every Monday at 08:00 in Bogota.
+name: drift
+
+on:
+  schedule:
+    - cron: "0 13 * * 1"
+  workflow_dispatch:
+
+permissions: {}
+
+env:
+  NAME_PREFIX: fnc-aroma
+  TF_IN_AUTOMATION: "1"
+
+jobs:
+  drift:
+    name: drift ${{ matrix.environment }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        environment: [dev, test, prod]
+    environment: plan-${{ matrix.environment }}
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      ENVIRONMENT: ${{ matrix.environment }}
+      CENTER_LINK_IPS: ${{ vars.CENTER_LINK_IPS }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install Terraform
+        run: .github/scripts/install-tool.sh terraform
+
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/fnc-aroma-${{ matrix.environment }}-role-pipeline-plan
+          aws-region: ${{ vars.AWS_REGION }}
+          mask-aws-account-id: true
+
+      - name: Compare with the code
+        run: .github/scripts/plan.sh drift
