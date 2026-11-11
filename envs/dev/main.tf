@@ -22,7 +22,7 @@ module "network" {
 }
 
 module "security" {
-  source = "git::https://github.com/aromapacifico-devops/terraform-aws-security.git?ref=v0.5.0"
+  source = "git::https://github.com/aromapacifico-devops/terraform-aws-security.git?ref=v0.6.0"
 
   providers = {
     aws.project = aws.principal
@@ -75,7 +75,7 @@ module "telemetry_ingestion" {
 }
 
 module "inference_function" {
-  source = "git::https://github.com/aromapacifico-devops/terraform-aws-inference-function.git?ref=v0.1.0"
+  source = "git::https://github.com/aromapacifico-devops/terraform-aws-inference-function.git?ref=v1.0.0"
 
   providers = {
     aws.project = aws.principal
@@ -84,6 +84,24 @@ module "inference_function" {
   client      = var.client
   project     = var.project
   environment = var.environment
+
+  data_key_arn    = module.security.data_key_arn
+  objects_key_arn = module.security.objects_key_arn
+  role_arns = {
+    function = module.security.focus_function_role_arn
+    delivery = module.security.focus_delivery_role_arn
+  }
+
+  names             = local.inference_names
+  mission_type      = "FOCUS_CONFIRMATION"
+  object_prefix     = local.focus_object_prefix
+  restricted_prefix = local.restricted_object_prefix
+  bedrock_model_id  = local.focus_model_id
+
+  # The person filter, the model call and the result belong to the platform application, so the
+  # function runs the placeholder that only logs.
+  function_package   = { path = data.archive_file.functions["placeholder"].output_path }
+  force_destroy_data = var.force_destroy_data
 }
 
 # One sample farm per environment, since environments share the thing registry of the account.
