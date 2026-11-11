@@ -15,6 +15,7 @@ Each root calls the five modules by exact tag. The modules expose their interfac
 7. Bringing an environment up and down
 8. Checks on each pull request
 9. Conventions
+10. Hours and verification
 
 ## 1. Terms
 
@@ -59,6 +60,20 @@ aromapacifico-devops-infra/
 Each directory under `envs/` holds `main.tf`, `variables.tf`, `locals.tf`, `outputs.tf`, `providers.tf`, `versions.tf`, `backend.tf`, `terraform.tfvars`, `.terraform.lock.hcl` and `sample-node.csr`. A separate directory per environment lets test and production pin different module versions, which is what makes promotion possible. `backend.tf` points each root to its own state bucket.
 
 Terraform is pinned to the exact version in `.terraform-version`, and every root requires at least that version. The AWS provider stays within one minor release, and the lock files hold its checksums for Linux, macOS and Windows, so a plan resolves the same build on any machine.
+
+### What a run needs
+
+| Dependency | Version or detail | Needed for |
+|---|---|---|
+| Terraform | 1.17.1, from `.terraform-version` | Every plan and apply |
+| AWS provider | 6.72.x, checksums in each `.terraform.lock.hcl` | Every plan and apply |
+| Module repositories | The five tags that each `envs/<env>/main.tf` names, fetched over HTTPS by `terraform init` | Every plan and apply |
+| Bootstrap | The state bucket and Platform key of the environment, created once by `bootstrap/` | `terraform init` of a root |
+| AWS credentials | A profile of the demonstration account locally, or the OIDC roles in the pipeline | `terraform init` with a backend, plan and apply |
+| AWS CLI and `jq` | Any current version | Smoke test and pipeline scripts |
+| Python 3 | 3.9 or later, for `zoneinfo` | Harvest freeze gate and its tests |
+| `openssl` | Any current version | A new `sample-node.csr` for a live test |
+| Network | HTTPS to `registry.terraform.io`, `github.com` and the AWS endpoints of `us-east-1` | `terraform init` and plan |
 
 A root runs locally with these commands. `terraform init` reads the state bucket, so it needs AWS credentials for the demonstration account, such as a profile created with `aws login`. `terraform init -backend=false` is enough to validate without credentials.
 
@@ -286,3 +301,24 @@ Third-party actions are pinned to a full commit SHA, and tools install by exact 
 | Reviews | Each pull request needs a cross review |
 
 The [architecture documents](https://github.com/aromapacifico-devops/aromapacifico-devops-docs/tree/main/docs/architecture) explain the implementation scope, the environments and the design behind each module.
+
+## 10. Hours and verification
+
+The infrastructure code had a budget of 100 hours over two weeks. The table compares the planned hours of each task with the hours reported by the person who did it. A task without a report shows no real figure, and no figure is estimated in its place.
+
+| Task | Box | Planned hours | Real hours |
+|---|---|---|---|
+| Terraform structure and module contract | C01 | 6 | Not reported |
+| Remote backend and state locking | C02 | 8 | Not reported |
+| Network module, VPC and subnets | C03 | 12 | Not reported |
+| Security module, identities and encryption | C05 | 12 | Not reported |
+| Variables for dev, test and prod | C01 | 6 | 6 |
+| Link to a collection center | C04 | 8 | Not reported |
+| Permanent cloud firewall rules | C06 | 8 | Not reported |
+| Ingestion pattern and farm module | C07, C10 | 14 | 14 |
+| Inference function pattern | C08 | 12 | 12 |
+| Pipeline with approval before production | C09 | 8 | 8 |
+| Verification and evidence | C09 | 6 | Not reported |
+| Total | | 100 | 40 reported, for 40 planned |
+
+The [verification](docs/verification.md) holds the evidence. It covers a plan and apply of test, the smoke test, a second plan with no changes, the code behind each box, the search for secrets and what remains unproven.
