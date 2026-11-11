@@ -60,6 +60,20 @@ Each directory under `envs/` holds `main.tf`, `variables.tf`, `locals.tf`, `outp
 
 Terraform is pinned to the exact version in `.terraform-version`, and every root requires at least that version. The AWS provider stays within one minor release, and the lock files hold its checksums for Linux, macOS and Windows, so a plan resolves the same build on any machine.
 
+### What a run needs
+
+| Dependency | Version or detail | Needed for |
+|---|---|---|
+| Terraform | 1.17.1, from `.terraform-version` | Every plan and apply |
+| AWS provider | 6.72.x, checksums in each `.terraform.lock.hcl` | Every plan and apply |
+| Module repositories | The five tags that each `envs/<env>/main.tf` names, fetched over HTTPS by `terraform init` | Every plan and apply |
+| Bootstrap | The state bucket and Platform key of the environment, created once by `bootstrap/` | `terraform init` of a root |
+| AWS credentials | A profile of the demonstration account locally, or the OIDC roles in the pipeline | `terraform init` with a backend, plan and apply |
+| AWS CLI and `jq` | Any current version | Smoke test and pipeline scripts |
+| Python 3 | 3.9 or later, for `zoneinfo` | Harvest freeze gate and its tests |
+| `openssl` | Any current version | A new `sample-node.csr` for a live test |
+| Network | HTTPS to `registry.terraform.io`, `github.com` and the AWS endpoints of `us-east-1` | `terraform init` and plan |
+
 A root runs locally with these commands. `terraform init` reads the state bucket, so it needs AWS credentials for the demonstration account, such as a profile created with `aws login`. `terraform init -backend=false` is enough to validate without credentials.
 
 ```bash
