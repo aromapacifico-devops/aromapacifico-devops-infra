@@ -19,7 +19,7 @@ module "network" {
 }
 
 module "security" {
-  source = "git::https://github.com/aromapacifico-devops/terraform-aws-security.git?ref=feat/12-firewall-rules"
+  source = "git::https://github.com/aromapacifico-devops/terraform-aws-security.git?ref=v0.5.0"
 
   providers = {
     aws.project = aws.principal
