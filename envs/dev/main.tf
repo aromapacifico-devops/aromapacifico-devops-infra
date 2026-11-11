@@ -1,5 +1,6 @@
 # Modules of the environment, each consumed by exact tag.
 module "network" {
+  #checkov:skip=CKV_TF_1:Release tags cannot move or be deleted, see docs/iac-exceptions.md
   source = "git::https://github.com/aromapacifico-devops/terraform-aws-network.git?ref=v1.1.0"
 
   providers = {
@@ -25,6 +26,7 @@ module "network" {
 }
 
 module "security" {
+  #checkov:skip=CKV_TF_1:Release tags cannot move or be deleted, see docs/iac-exceptions.md
   source = "git::https://github.com/aromapacifico-devops/terraform-aws-security.git?ref=v0.6.0"
 
   providers = {
@@ -51,6 +53,7 @@ module "security" {
 }
 
 module "telemetry_ingestion" {
+  #checkov:skip=CKV_TF_1:Release tags cannot move or be deleted, see docs/iac-exceptions.md
   source = "git::https://github.com/aromapacifico-devops/terraform-aws-telemetry-ingestion.git?ref=v1.0.0"
 
   providers = {
@@ -84,6 +87,7 @@ module "telemetry_ingestion" {
 }
 
 module "inference_function" {
+  #checkov:skip=CKV_TF_1:Release tags cannot move or be deleted, see docs/iac-exceptions.md
   source = "git::https://github.com/aromapacifico-devops/terraform-aws-inference-function.git?ref=v1.0.0"
 
   providers = {
@@ -118,6 +122,7 @@ module "inference_function" {
 
 # One sample farm per environment, since environments share the thing registry of the account.
 module "farm" {
+  #checkov:skip=CKV_TF_1:Release tags cannot move or be deleted, see docs/iac-exceptions.md
   source = "git::https://github.com/aromapacifico-devops/terraform-aws-farm.git?ref=v1.0.0"
 
   providers = {

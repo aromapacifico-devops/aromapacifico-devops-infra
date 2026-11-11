@@ -9,6 +9,19 @@ resource "aws_kms_key" "platform" {
   enable_key_rotation     = true
   deletion_window_in_days = 30
 
+  # The statement of the AWS default key policy, written out so the policy is part of the code. IAM
+  # policies decide who uses the key.
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "EnableIamPolicies"
+      Effect    = "Allow"
+      Principal = { AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root" }
+      Action    = "kms:*"
+      Resource  = "*"
+    }]
+  })
+
   tags = {
     Environment = each.key
   }
@@ -23,6 +36,9 @@ resource "aws_kms_alias" "platform" {
 }
 
 resource "aws_s3_bucket" "state" {
+  #checkov:skip=CKV2_AWS_62:Nothing reacts to a state object, see docs/iac-exceptions.md
+  #checkov:skip=CKV_AWS_18:The bucket policy limits access to the pipeline roles and operators, see docs/iac-exceptions.md
+  #checkov:skip=CKV_AWS_144:Versioning keeps the history in one Region, see docs/iac-exceptions.md
   provider = aws.principal
   for_each = local.state
 
