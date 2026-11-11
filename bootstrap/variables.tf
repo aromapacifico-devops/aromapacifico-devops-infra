@@ -41,6 +41,12 @@ variable "common_tags" {
   type        = map(string)
 }
 
+variable "saved_plan_days" {
+  description = "Days a saved plan stays in the state bucket before it expires."
+  type        = number
+  default     = 30
+}
+
 variable "github_subject_prefix" {
   description = "Prefix of the OIDC subject of the infrastructure repository, in the immutable format repo:<owner>@<owner id>/<repo>@<repo id>."
   type        = string
