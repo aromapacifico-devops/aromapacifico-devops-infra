@@ -194,11 +194,11 @@ Serverless resources cost almost nothing while idle, so the money goes to the VP
 
 | Workflow | Starts | What it does |
 |---|---|---|
-| Bootstrap | Once, by hand | Creates what the rest depends on, and is never destroyed |
-| Plan | Each pull request | Shows the changes |
-| Deploy | Manually from GitHub, choosing the environment, when work on it starts | Applies, and production needs approval |
-| Destroy | Manually from GitHub, choosing the environment, when work on it stops | Removes the environment and keeps bootstrap |
-| Drift | On a schedule | Runs a plan and reports differences against the code |
+| `bootstrap` | By hand, after one of the team approves `shared` | Plans the shared resources, and applies them only when `apply` is checked |
+| `plan` | Each pull request to `main` | Tests the freeze gate, then plans dev, test and prod and comments a summary and its cost for each |
+| `deploy` | By hand from `main`, choosing the environment | Plans, then applies exactly that plan. Test then runs the smoke test, and production waits for a reviewer and the freeze gate |
+| `destroy` | By hand from `main`, choosing the environment and typing its name again | Plans the destroy, then applies it the same way. Bootstrap stays |
+| `drift` | Mondays at 08:00 in Bogota, or by hand | Plans each environment that is up and fails when it differs from the code |
 
 | Use | Cost, USD |
 |---|---|
@@ -208,6 +208,36 @@ Serverless resources cost almost nothing while idle, so the money goes to the VP
 | Both up for 10 sessions of 8 hours | 15.84 |
 
 No destroy runs on a schedule. The person who brought an environment up takes it down when work stops, and the budget that bootstrap creates, with alerts at USD 20 and USD 50, catches an environment left up by mistake. `enable_center_link` and `enable_private_endpoints` turn off the two billed items for sessions that do not need them.
+
+### How a run reaches an environment
+
+`deploy` and `destroy` call the same two jobs. The first job plans with the plan role, writes the summary to the run page and stores the plan, with the function packages built for it, in the state bucket of the environment under `plans/`. The second job runs in the GitHub environment, so production stops there until a reviewer approves, then downloads that exact plan and applies it with the apply role. A plan that changes nothing ends the run with no apply. Saved plans expire after 30 days.
+
+Pull request plans are read only. They take no state lock, store the plan under `plans/pr-<number>/`, and comment the resources each change creates, updates or destroys, with no attribute values, since the repository is public.
+
+Production links the three collection centers, and their static addresses come from the providers of each link. Until the variable `CENTER_LINK_IPS` of `plan-prod` and `prod` holds them, as a JSON map such as `{"41": "<address>"}`, the production plan of a pull request reports that it is blocked and passes, and a production deploy fails with the same message.
+
+### Harvest freeze
+
+No production change runs from 05:00 to 18:00, Bogota time, on a day inside a harvest week. The apply job of production runs `.github/scripts/freeze_gate.py` after the approval and before the apply. The weeks live in `config/harvest-calendar.json`, one entry per department with its first and last day, and the file stays empty until the Federation gives the weeks of each department.
+
+```json
+{"department": "cauca", "start": "2026-11-09", "end": "2026-11-15"}
+```
+
+An incident inside the window goes through the `incident` input of `deploy` or `destroy`, with its reason. The gate then lets the apply run and writes the reason in the run summary, next to the approval of the reviewer. The tests in `tests/test_freeze_gate.py` check 04:59, 05:00, 17:59 and 18:00, the first and last day of a week, overlapping weeks, a time given in UTC and the incident override.
+
+```bash
+python3 -m unittest discover -s tests
+```
+
+### Smoke test
+
+After each deploy of test, `.github/scripts/smoke-test.sh` publishes one simulated reading of the sample node through the IoT data endpoint and waits up to 2 minutes for it in the readings table. It publishes with the apply role over HTTPS, so it needs no device certificate.
+
+### Cost of a change
+
+Each pull request plan runs Infracost on the saved plan and comments the monthly cost of each environment. It needs the repository secret `INFRACOST_API_KEY`, and the job fails when the secret is missing or when Infracost returns no figure. Infracost prices the resources it knows from the plan, and usage such as IoT messages and model calls depends on volume, so the estimate by volume stays in `docs/governance/cloud-cost.md` of the documents repository.
 
 ### First bootstrap run
 
