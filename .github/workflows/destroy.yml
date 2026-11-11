@@ -41,7 +41,7 @@ jobs:
 
   run:
     needs: confirm
-    uses: ./.github/workflows/terraform-run.yml
+    uses: ./.github/workflows/terraform-run.yml # zizmor: ignore[self-repository] actionlint 1.7.12 rejects the $/ form
     with:
       environment: ${{ inputs.environment }}
       mode: destroy
