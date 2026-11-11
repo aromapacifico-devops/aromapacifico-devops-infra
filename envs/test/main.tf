@@ -42,7 +42,7 @@ module "security" {
 }
 
 module "telemetry_ingestion" {
-  source = "git::https://github.com/aromapacifico-devops/terraform-aws-telemetry-ingestion.git?ref=feat/5-ingestion-resources"
+  source = "git::https://github.com/aromapacifico-devops/terraform-aws-telemetry-ingestion.git?ref=v1.0.0"
 
   providers = {
     aws.project = aws.principal
@@ -85,7 +85,7 @@ module "inference_function" {
 
 # One sample farm per environment, since environments share the thing registry of the account.
 module "farm" {
-  source = "git::https://github.com/aromapacifico-devops/terraform-aws-farm.git?ref=feat/5-farm-identity"
+  source = "git::https://github.com/aromapacifico-devops/terraform-aws-farm.git?ref=v1.0.0"
 
   providers = {
     aws.project = aws.principal
