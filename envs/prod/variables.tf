@@ -109,3 +109,13 @@ variable "common_tags" {
     error_message = "common_tags CostCenter must be one of the documented cost centers, and ManagedBy must be Terraform."
   }
 }
+
+variable "key_deletion_window_in_days" {
+  description = "Days a destroyed KMS key waits before AWS deletes it, 7 to 30."
+  type        = number
+
+  validation {
+    condition     = var.key_deletion_window_in_days >= 7 && var.key_deletion_window_in_days <= 30 && floor(var.key_deletion_window_in_days) == var.key_deletion_window_in_days
+    error_message = "key_deletion_window_in_days must be a whole number from 7 to 30."
+  }
+}

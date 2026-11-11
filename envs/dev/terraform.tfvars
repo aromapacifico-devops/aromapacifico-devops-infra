@@ -14,6 +14,9 @@ enable_private_endpoints = false
 # Holds no real data, so a destroy may remove it.
 force_destroy_data = true
 
+# Days a destroyed key stays recoverable before AWS deletes it.
+key_deletion_window_in_days = 7
+
 common_tags = {
   Client      = "fnc"
   Project     = "aroma"

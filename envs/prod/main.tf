@@ -20,7 +20,7 @@ module "network" {
 }
 
 module "security" {
-  source = "git::https://github.com/aromapacifico-devops/terraform-aws-security.git?ref=v0.1.0"
+  source = "git::https://github.com/aromapacifico-devops/terraform-aws-security.git?ref=v0.4.0"
 
   providers = {
     aws.project = aws.principal
@@ -29,6 +29,9 @@ module "security" {
   client      = var.client
   project     = var.project
   environment = var.environment
+
+  keys  = local.security_keys
+  roles = local.security_roles
 }
 
 module "telemetry_ingestion" {

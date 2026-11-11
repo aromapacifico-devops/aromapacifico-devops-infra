@@ -18,4 +18,125 @@ locals {
       }
     }
   ]...)
+
+  account_id = data.aws_caller_identity.current.account_id
+  region     = data.aws_region.current.region
+  partition  = data.aws_partition.current.partition
+  arn_scope  = "${local.region}:${local.account_id}"
+
+  # Final names of the workload resources. The ingestion and function modules receive them, and the
+  # security module builds role permissions from their ARNs. IoT rule names accept no hyphens.
+  names = {
+    ingestion_queue    = "${local.name_prefix}-sqs-ingest"
+    readings_table     = "${local.name_prefix}-ddb-readings"
+    ranges_table       = "${local.name_prefix}-ddb-ranges"
+    alerts_table       = "${local.name_prefix}-ddb-alerts"
+    farms_table        = "${local.name_prefix}-ddb-farms"
+    delivery_queue     = "${local.name_prefix}-sqs-dlvcheck"
+    push_application   = "${local.name_prefix}-push-fcm"
+    sms_config_set     = "${local.name_prefix}-sms-alerts"
+    archive_database   = "${replace(local.name_prefix, "-", "_")}_telemetry"
+    archive_table      = "readings"
+    status_function    = "${local.name_prefix}-fn-dlvstatus"
+    check_function     = "${local.name_prefix}-fn-dlvcheck"
+    sms_status_logs    = "/aws/sms/${local.name_prefix}-status"
+    archive_stream     = "${local.name_prefix}-fh-archive"
+    archive_bucket     = "${local.name_prefix}-s3-archive"
+    ingestion_function = "${local.name_prefix}-fn-ingest"
+    telemetry_rule     = "${replace(local.name_prefix, "-", "_")}_rule_telemetry"
+    objects_bucket     = "${local.name_prefix}-s3-flights"
+    cases_table        = "${local.name_prefix}-ddb-cases"
+    focus_function     = "${local.name_prefix}-fn-focus"
+    focus_dead_letter  = "${local.name_prefix}-sqs-focus-dlq"
+  }
+
+  table_arn = "arn:${local.partition}:dynamodb:${local.arn_scope}:table"
+  queue_arn = "arn:${local.partition}:sqs:${local.arn_scope}"
+  logs_arn  = "arn:${local.partition}:logs:${local.arn_scope}:log-group"
+
+  # SNS names the status log groups of a platform application after the application.
+  push_application_path = "app/GCM/${local.names.push_application}"
+  sms_config_set_arn    = "arn:${local.partition}:sms-voice:${local.arn_scope}:configuration-set/${local.names.sms_config_set}"
+
+  focus_object_prefix      = "focus/"
+  restricted_object_prefix = "restricted/"
+
+  # Nova 2 Lite through the US cross-Region inference profile, which routes to these Regions.
+  focus_model_id      = "us.amazon.nova-2-lite-v1:0"
+  focus_model_regions = ["us-east-1", "us-east-2", "us-west-2"]
+
+  security_keys = {
+    data = {
+      alias                   = "alias/${local.name_prefix}-kms-data"
+      description             = "Data key of the ${var.environment} tables, queues and topics"
+      deletion_window_in_days = var.key_deletion_window_in_days
+    }
+    objects = {
+      alias                   = "alias/${local.name_prefix}-kms-objects"
+      description             = "Objects key of the ${var.environment} buckets"
+      deletion_window_in_days = var.key_deletion_window_in_days
+    }
+  }
+
+  security_roles = {
+    ingestion_function = {
+      name             = "${local.name_prefix}-role-ingest"
+      queue_arns       = ["arn:${local.partition}:sqs:${local.arn_scope}:${local.names.ingestion_queue}"]
+      write_table_arns = [for table in [local.names.readings_table, local.names.alerts_table] : "${local.table_arn}/${table}"]
+      read_table_arns  = [for table in [local.names.ranges_table, local.names.farms_table] : "${local.table_arn}/${table}"]
+      log_group_arns   = ["${local.logs_arn}:/aws/lambda/${local.names.ingestion_function}"]
+
+      push_application_arns = ["arn:${local.partition}:sns:${local.arn_scope}:${local.push_application_path}"]
+      send_queue_arns       = ["${local.queue_arn}:${local.names.delivery_queue}"]
+    }
+    iot_rule = {
+      name        = "${local.name_prefix}-role-iotrule"
+      queue_arns  = ["arn:${local.partition}:sqs:${local.arn_scope}:${local.names.ingestion_queue}"]
+      stream_arns = ["arn:${local.partition}:firehose:${local.arn_scope}:deliverystream/${local.names.archive_stream}"]
+      source_arn  = "arn:${local.partition}:iot:${local.arn_scope}:rule/${local.names.telemetry_rule}"
+    }
+    firehose_delivery = {
+      name            = "${local.name_prefix}-role-firehose"
+      bucket_arns     = ["arn:${local.partition}:s3:::${local.names.archive_bucket}"]
+      glue_table_arns = ["arn:${local.partition}:glue:${local.arn_scope}:table/${local.names.archive_database}/${local.names.archive_table}"]
+    }
+    focus_function = {
+      name              = "${local.name_prefix}-role-focus"
+      bucket_arns       = ["arn:${local.partition}:s3:::${local.names.objects_bucket}"]
+      object_prefix     = local.focus_object_prefix
+      restricted_prefix = local.restricted_object_prefix
+      model_arns = concat(
+        ["arn:${local.partition}:bedrock:${local.arn_scope}:inference-profile/${local.focus_model_id}"],
+        [for region in local.focus_model_regions : "arn:${local.partition}:bedrock:${region}::foundation-model/${trimprefix(local.focus_model_id, "us.")}"]
+      )
+      write_table_arns       = ["arn:${local.partition}:dynamodb:${local.arn_scope}:table/${local.names.cases_table}"]
+      dead_letter_queue_arns = ["arn:${local.partition}:sqs:${local.arn_scope}:${local.names.focus_dead_letter}"]
+      log_group_arns         = ["arn:${local.partition}:logs:${local.arn_scope}:log-group:/aws/lambda/${local.names.focus_function}"]
+    }
+    delivery_status_function = {
+      name             = "${local.name_prefix}-role-dlvstat"
+      write_table_arns = ["${local.table_arn}/${local.names.alerts_table}"]
+      log_group_arns   = ["${local.logs_arn}:/aws/lambda/${local.names.status_function}"]
+    }
+    delivery_check_function = {
+      name              = "${local.name_prefix}-role-dlvcheck"
+      queue_arns        = ["${local.queue_arn}:${local.names.delivery_queue}"]
+      write_table_arns  = ["${local.table_arn}/${local.names.alerts_table}"]
+      read_table_arns   = ["${local.table_arn}/${local.names.farms_table}"]
+      sms_resource_arns = [local.sms_config_set_arn]
+      log_group_arns    = ["${local.logs_arn}:/aws/lambda/${local.names.check_function}"]
+    }
+    push_status_logs = {
+      name = "${local.name_prefix}-role-pushlogs"
+      log_group_arns = [
+        "${local.logs_arn}:sns/${local.region}/${local.account_id}/${local.push_application_path}",
+        "${local.logs_arn}:sns/${local.region}/${local.account_id}/${local.push_application_path}/Failure",
+      ]
+    }
+    sms_status_logs = {
+      name           = "${local.name_prefix}-role-smslogs"
+      log_group_arns = ["${local.logs_arn}:${local.names.sms_status_logs}"]
+      source_arn     = local.sms_config_set_arn
+    }
+  }
 }

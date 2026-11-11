@@ -14,6 +14,9 @@ enable_private_endpoints = true
 # The demonstration holds no real data, so a destroy may remove it. The pilot sets this to false in production.
 force_destroy_data = true
 
+# Days a destroyed key stays recoverable before AWS deletes it.
+key_deletion_window_in_days = 30
+
 common_tags = {
   Client      = "fnc"
   Project     = "aroma"
