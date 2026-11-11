@@ -34,4 +34,5 @@ esac
 
 rm -rf "$work"
 if [ -n "${GITHUB_PATH:-}" ]; then echo "$dest" >> "$GITHUB_PATH"; fi
-"$dest/$tool" --version | head -1
+out=$("$dest/$tool" --version)
+echo "${out%%$'\n'*}"
