@@ -76,6 +76,17 @@ variable "enable_center_link" {
   default     = false
 }
 
+variable "linked_centers" {
+  description = "Second octet of each collection center linked to this environment, 41 Cauca, 42 Huila and 43 Tolima. The firewall admits the logistics and local server ranges of these centers only."
+  type        = list(number)
+  default     = []
+
+  validation {
+    condition     = alltrue([for octet in var.linked_centers : contains([41, 42, 43], octet)]) && length(distinct(var.linked_centers)) == length(var.linked_centers)
+    error_message = "linked_centers may hold 41, 42 and 43, each at most once."
+  }
+}
+
 variable "enable_private_endpoints" {
   description = "Creates the interface endpoints, the other hourly cost of an environment."
   type        = bool

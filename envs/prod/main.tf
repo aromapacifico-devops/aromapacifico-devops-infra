@@ -15,12 +15,11 @@ module "network" {
   subnets                  = local.subnets
   enable_private_endpoints = var.enable_private_endpoints
 
-  # The security module provides these groups. Until it does, a plan with private endpoints on stops at the module validation.
-  endpoint_security_group_ids = {}
+  endpoint_security_group_ids = module.security.endpoint_security_group_ids
 }
 
 module "security" {
-  source = "git::https://github.com/aromapacifico-devops/terraform-aws-security.git?ref=v0.4.0"
+  source = "git::https://github.com/aromapacifico-devops/terraform-aws-security.git?ref=v0.5.0"
 
   providers = {
     aws.project = aws.principal
@@ -32,6 +31,14 @@ module "security" {
 
   keys  = local.security_keys
   roles = local.security_roles
+
+  firewall = {
+    vpc_id                 = module.network.vpc_id
+    open_subnet_ids        = local.open_subnet_ids
+    closed_subnet_ids      = local.closed_subnet_ids
+    center_cidrs           = local.center_cidrs
+    enable_endpoint_groups = var.enable_private_endpoints
+  }
 }
 
 module "telemetry_ingestion" {
