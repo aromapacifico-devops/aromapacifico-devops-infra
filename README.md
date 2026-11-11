@@ -51,11 +51,12 @@ aromapacifico-devops-infra/
 │   ├── dev/                  Root of development
 │   ├── test/                 Root of test
 │   └── prod/                 Root of production
+├── functions/                Code packaged for the ingestion functions
 ├── docs/iac-exceptions.md    Accepted findings, with reason and end condition
 └── .github/workflows/        Plan, deploy, destroy, drift and bootstrap workflows
 ```
 
-Each directory under `envs/` holds `main.tf`, `variables.tf`, `locals.tf`, `outputs.tf`, `providers.tf`, `versions.tf`, `backend.tf`, `terraform.tfvars` and `.terraform.lock.hcl`. A separate directory per environment lets test and production pin different module versions, which is what makes promotion possible. `backend.tf` points each root to its own state bucket.
+Each directory under `envs/` holds `main.tf`, `variables.tf`, `locals.tf`, `outputs.tf`, `providers.tf`, `versions.tf`, `backend.tf`, `terraform.tfvars`, `.terraform.lock.hcl` and `sample-node.csr`. A separate directory per environment lets test and production pin different module versions, which is what makes promotion possible. `backend.tf` points each root to its own state bucket.
 
 Terraform is pinned to the exact version in `.terraform-version`, and every root requires at least that version. The AWS provider stays within one minor release, and the lock files hold its checksums for Linux, macOS and Windows, so a plan resolves the same build on any machine.
 
@@ -106,6 +107,8 @@ Only `terraform.tfvars` changes between environments, and no value in it is a se
 
 | Variable | Rejected when |
 |---|---|
+| `departments` | It is empty, or a code uses characters other than lowercase letters, digits and hyphens |
+| `sample_farm` | Its department is outside `departments`, or its node name does not start with `node-<env>-` |
 | `vpc_cidr` | It is not a /16 written from its network address, or it falls outside 10.0.0.0/8 or inside 10.41.0.0/16 to 10.49.0.0/16, the ranges of the collection centers |
 | `availability_zones` | It lists fewer than one or more than three zones, repeats a zone, or names a zone of another Region |
 | `common_tags` | A mandatory tag is missing, `Client`, `Project` or `Environment` differ from the governance variables, `CostCenter` is outside the documented cost centers, or `ManagedBy` is not `Terraform` |
@@ -113,6 +116,14 @@ Only `terraform.tfvars` changes between environments, and no value in it is a se
 | `linked_centers` | It holds a value other than 41, 42 or 43, or repeats one |
 
 `linked_centers` decides which collection centers the cloud firewall admits, through the logistics range `10.X.3.0/24` and the local server range `10.X.10.0/24` of each one. It defaults to no center. `enable_center_link` and `enable_private_endpoints` default to `false`, and `force_destroy_data` defaults to `false` so that a root without values never deletes data. The environment files set them as the table above shows.
+
+### Telemetry ingestion and the sample farm
+
+Each root deploys the telemetry ingestion path with a thing group for each department of the pilot, Cauca, Huila and Tolima, and writes the initial alert ranges once as version 1. Environments share the IoT broker and the thing registry of the account, so each rule listens only to `aroma/<env>/farm/+/+`, and each root holds its own sample farm, whose node is named `node-<env>-00001`. The certificate request of that node is `sample-node.csr`, made with `openssl` on the machine that plays the node, which keeps the private key. The certificate leaves through the `sample_certificate_pem` output and the MQTT endpoint through `iot_data_endpoint`.
+
+`functions/ingestion` stores each reading once and reports the failed messages of a batch. Range evaluation and alerts belong to the platform application, so the delivery status and delivery check functions run `functions/placeholder`, which only logs. Each plan zips both folders into `.build/` of the root.
+
+The push platform application holds a credential that SNS checks at creation, so the platform operator creates it with the AWS CLI after the first deployment of an environment, under the name and with the roles that the telemetry ingestion module documents.
 
 Each environment has one root and one state. The modules of an environment reference each other, since endpoints need security groups and security groups need the VPC. Terraform resolves those references per resource inside one root, and the plan of a whole environment works from nothing, even after a destroy.
 
@@ -158,8 +169,8 @@ Serverless resources cost almost nothing while idle, so the money goes to the VP
 |---|---|---|
 | Bootstrap | Once, by hand | Creates what the rest depends on, and is never destroyed |
 | Plan | Each pull request | Shows the changes |
-| Deploy | Manually, choosing the environment | Applies, and production needs approval |
-| Destroy | Manually, and each night for every environment | Removes the environment and keeps bootstrap |
+| Deploy | Manually from GitHub, choosing the environment, when work on it starts | Applies, and production needs approval |
+| Destroy | Manually from GitHub, choosing the environment, when work on it stops | Removes the environment and keeps bootstrap |
 | Drift | On a schedule | Runs a plan and reports differences against the code |
 
 | Use | Cost, USD |
@@ -169,7 +180,7 @@ Serverless resources cost almost nothing while idle, so the money goes to the VP
 | Both up for a work session of 8 hours | 1.58 |
 | Both up for 10 sessions of 8 hours | 15.84 |
 
-`enable_center_link` and `enable_private_endpoints` turn off the two billed items for sessions that do not need them. Bootstrap also creates a budget with alerts at USD 20 and USD 50.
+No destroy runs on a schedule. The person who brought an environment up takes it down when work stops, and the budget that bootstrap creates, with alerts at USD 20 and USD 50, catches an environment left up by mistake. `enable_center_link` and `enable_private_endpoints` turn off the two billed items for sessions that do not need them.
 
 ### First bootstrap run
 

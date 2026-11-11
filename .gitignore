@@ -20,3 +20,7 @@ credentials
 *.key
 *.p12
 *.pfx
+
+# Function packages built during plan
+.build/
+__pycache__/

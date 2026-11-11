@@ -28,6 +28,9 @@ locals {
   # security module builds role permissions from their ARNs. IoT rule names accept no hyphens.
   names = {
     ingestion_queue    = "${local.name_prefix}-sqs-ingest"
+    ingestion_dlq      = "${local.name_prefix}-sqs-ingest-dlq"
+    delivery_dlq       = "${local.name_prefix}-sqs-dlvcheck-dlq"
+    iot_policy         = "${local.name_prefix}-iotpol-node"
     readings_table     = "${local.name_prefix}-ddb-readings"
     ranges_table       = "${local.name_prefix}-ddb-ranges"
     alerts_table       = "${local.name_prefix}-ddb-alerts"
@@ -68,8 +71,9 @@ locals {
   security_keys = {
     data = {
       alias                   = "alias/${local.name_prefix}-kms-data"
-      description             = "Data key of the ${var.environment} tables, queues and topics"
+      description             = "Data key of the ${var.environment} tables, queues and log groups"
       deletion_window_in_days = var.key_deletion_window_in_days
+      service_principals      = ["logs.${local.region}.amazonaws.com"]
     }
     objects = {
       alias                   = "alias/${local.name_prefix}-kms-objects"
@@ -139,6 +143,88 @@ locals {
       source_arn     = local.sms_config_set_arn
     }
   }
+
+  # Names the telemetry ingestion module receives.
+  ingestion_names = {
+    ingestion_queue             = local.names.ingestion_queue
+    ingestion_dead_letter_queue = local.names.ingestion_dlq
+    delivery_queue              = local.names.delivery_queue
+    delivery_dead_letter_queue  = local.names.delivery_dlq
+    readings_table              = local.names.readings_table
+    ranges_table                = local.names.ranges_table
+    alerts_table                = local.names.alerts_table
+    farms_table                 = local.names.farms_table
+    archive_bucket              = local.names.archive_bucket
+    archive_stream              = local.names.archive_stream
+    archive_database            = local.names.archive_database
+    archive_table               = local.names.archive_table
+    telemetry_rule              = local.names.telemetry_rule
+    iot_policy                  = local.names.iot_policy
+    ingestion_function          = local.names.ingestion_function
+    status_function             = local.names.status_function
+    check_function              = local.names.check_function
+    push_application            = local.names.push_application
+    sms_config_set              = local.names.sms_config_set
+    sms_status_logs             = local.names.sms_status_logs
+  }
+
+  thing_groups = { for department in var.departments : department => "${local.name_prefix}-thg-${department}" }
+
+  # The ingestion function stores readings. Alert logic belongs to the platform application, so the
+  # delivery functions run a placeholder that only logs.
+  function_packages = {
+    ingestion       = { path = data.archive_file.functions["ingestion"].output_path }
+    delivery_status = { path = data.archive_file.functions["placeholder"].output_path }
+    delivery_check  = { path = data.archive_file.functions["placeholder"].output_path }
+  }
+
+  # Initial ranges of the pilot, written once as version 1. Later versions come from the platform API.
+  ranges_valid_from = "2026-11-10T00:00:00Z"
+
+  alert_ranges = [
+    {
+      zone_type   = "cultivation"
+      variable    = "ph"
+      unit        = "pH"
+      valid_from  = local.ranges_valid_from
+      reason      = "Initial range of the pilot"
+      alert       = { min = 4.5, max = 6.0 }
+      recommended = { min = 4.9, max = 5.6 }
+    },
+    {
+      zone_type  = "cultivation"
+      variable   = "soil_humidity_pct"
+      unit       = "percent"
+      valid_from = local.ranges_valid_from
+      reason     = "Initial range of the pilot, bound to soil humidity"
+      alert      = { min = 40, max = 80 }
+    },
+    {
+      zone_type   = "cultivation"
+      variable    = "air_temp_c"
+      unit        = "°C"
+      valid_from  = local.ranges_valid_from
+      reason      = "Initial range of the pilot, bound to air temperature"
+      alert       = { min = 14, max = 30 }
+      recommended = { min = 17, max = 23 }
+    },
+    {
+      zone_type  = "drying"
+      variable   = "grain_temp_c"
+      unit       = "°C"
+      valid_from = local.ranges_valid_from
+      reason     = "Initial range of the pilot, grain above 40 °C"
+      alert      = { max = 40, max_included = false }
+    },
+    {
+      zone_type  = "drying"
+      variable   = "grain_humidity_pct"
+      unit       = "percent"
+      valid_from = local.ranges_valid_from
+      reason     = "Initial reference of the pilot"
+      reference  = { target = 12 }
+    },
+  ]
 }
 
 # Inputs of the cloud firewall rules in the security module.
