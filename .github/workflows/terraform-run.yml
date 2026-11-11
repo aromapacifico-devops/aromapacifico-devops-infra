@@ -1,0 +1,99 @@
+# Plans one environment, then applies exactly that plan in the environment itself. Production waits for
+# a reviewer, who reads the plan summary of the first job before approving.
+name: terraform-run
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        type: string
+        required: true
+      mode:
+        description: deploy or destroy
+        type: string
+        required: true
+      incident:
+        description: Reason of an approved incident, needed only inside the harvest freeze
+        type: string
+        default: ""
+
+permissions: {}
+
+env:
+  NAME_PREFIX: fnc-aroma
+  TF_IN_AUTOMATION: "1"
+  ENVIRONMENT: ${{ inputs.environment }}
+  MODE: ${{ inputs.mode }}
+  RUN_KEY: ${{ github.run_id }}-${{ github.run_attempt }}
+
+jobs:
+  plan:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment: plan-${{ inputs.environment }}
+    permissions:
+      contents: read
+      id-token: write
+    outputs:
+      changes: ${{ steps.plan.outputs.changes }}
+    env:
+      CENTER_LINK_IPS: ${{ vars.CENTER_LINK_IPS }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install Terraform
+        run: .github/scripts/install-tool.sh terraform
+
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/fnc-aroma-${{ inputs.environment }}-role-pipeline-plan
+          aws-region: ${{ vars.AWS_REGION }}
+          mask-aws-account-id: true
+
+      - name: Plan
+        id: plan
+        run: .github/scripts/plan.sh "$MODE"
+
+  apply:
+    needs: plan
+    if: needs.plan.outputs.changes == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    environment: ${{ inputs.environment }}
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      CENTER_LINK_IPS: ${{ vars.CENTER_LINK_IPS }}
+      INCIDENT: ${{ inputs.incident }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Harvest freeze
+        if: inputs.environment == 'prod'
+        run: python3 .github/scripts/freeze_gate.py config/harvest-calendar.json --incident "$INCIDENT" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Install Terraform
+        run: .github/scripts/install-tool.sh terraform
+
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/fnc-aroma-${{ inputs.environment }}-role-pipeline-apply
+          aws-region: ${{ vars.AWS_REGION }}
+          mask-aws-account-id: true
+
+      - name: Apply the saved plan
+        working-directory: envs/${{ inputs.environment }}
+        run: |
+          aws s3 cp "s3://$NAME_PREFIX-$ENVIRONMENT-s3-tfstate/plans/$MODE/$RUN_KEY.tgz" plan.tgz --only-show-errors
+          tar -xzf plan.tgz
+          terraform init -input=false -no-color > /dev/null
+          terraform apply -input=false -no-color tfplan
+
+      - name: Smoke test
+        if: inputs.environment == 'test' && inputs.mode == 'deploy'
+        run: .github/scripts/smoke-test.sh

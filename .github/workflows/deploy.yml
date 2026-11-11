@@ -1,0 +1,31 @@
+# Brings an environment up, or updates it, from main. Production waits for a reviewer.
+name: deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        type: choice
+        options: [dev, test, prod]
+        required: true
+      incident:
+        description: Reason of an approved incident, needed only to change production inside the harvest freeze
+        type: string
+        default: ""
+
+permissions: {}
+
+concurrency:
+  group: environment-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  run:
+    uses: ./.github/workflows/terraform-run.yml
+    with:
+      environment: ${{ inputs.environment }}
+      mode: deploy
+      incident: ${{ inputs.incident }}
+    permissions:
+      contents: read
+      id-token: write

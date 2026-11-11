@@ -1,0 +1,51 @@
+# Takes an environment down when work on it stops. Bootstrap stays. Production waits for a reviewer.
+name: destroy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        type: choice
+        options: [dev, test, prod]
+        required: true
+      confirm:
+        description: Type the environment name again to confirm
+        type: string
+        required: true
+      incident:
+        description: Reason of an approved incident, needed only to change production inside the harvest freeze
+        type: string
+        default: ""
+
+permissions: {}
+
+concurrency:
+  group: environment-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  confirm:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Check the confirmation
+        env:
+          ENVIRONMENT: ${{ inputs.environment }}
+          CONFIRM: ${{ inputs.confirm }}
+        run: |
+          if [ "$CONFIRM" != "$ENVIRONMENT" ]; then
+            echo "::error::confirm must repeat the environment name"
+            exit 1
+          fi
+
+  run:
+    needs: confirm
+    uses: ./.github/workflows/terraform-run.yml
+    with:
+      environment: ${{ inputs.environment }}
+      mode: destroy
+      incident: ${{ inputs.incident }}
+    permissions:
+      contents: read
+      id-token: write

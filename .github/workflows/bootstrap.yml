@@ -1,0 +1,56 @@
+# Plans the shared resources and applies them when asked. It runs by hand, after one of the team approves
+# the shared environment.
+name: bootstrap
+
+on:
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: Apply the plan after showing it
+        type: boolean
+        default: false
+
+permissions: {}
+
+concurrency:
+  group: environment-shared
+  cancel-in-progress: false
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment: shared
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      TF_IN_AUTOMATION: "1"
+      TF_VAR_budget_alert_email: ${{ secrets.BUDGET_ALERT_EMAIL }}
+    defaults:
+      run:
+        working-directory: bootstrap
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install Terraform
+        working-directory: .
+        run: .github/scripts/install-tool.sh terraform
+
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/fnc-aroma-shared-role-pipeline-bootstrap
+          aws-region: ${{ vars.AWS_REGION }}
+          mask-aws-account-id: true
+
+      - name: Plan
+        run: |
+          terraform init -input=false -no-color > /dev/null
+          terraform plan -input=false -no-color -out=tfplan > plan.log
+          grep -E '^(Plan:|No changes)|will be (created|updated|destroyed|replaced)|must be replaced' plan.log | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Apply
+        if: inputs.apply
+        run: terraform apply -input=false -no-color tfplan
