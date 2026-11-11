@@ -7,7 +7,7 @@ region      = "us-east-1"
 vpc_cidr           = "10.70.0.0/16"
 availability_zones = ["us-east-1a", "us-east-1b"]
 
-# Production runs the full network. The nightly destroy limits its cost.
+# Production runs the full network. The environment comes up only while it is used, which limits its cost.
 enable_center_link       = true
 enable_private_endpoints = true
 
@@ -24,4 +24,12 @@ common_tags = {
   Owner       = "platform"
   CostCenter  = "plataforma"
   ManagedBy   = "Terraform"
+}
+
+departments = ["cauca", "huila", "tolima"]
+
+sample_farm = {
+  farm_id    = "farm-prod-0001"
+  department = "cauca"
+  node_id    = "node-prod-00001"
 }

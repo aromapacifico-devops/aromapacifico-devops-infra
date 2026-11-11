@@ -25,3 +25,11 @@ common_tags = {
   CostCenter  = "plataforma"
   ManagedBy   = "Terraform"
 }
+
+departments = ["cauca", "huila", "tolima"]
+
+sample_farm = {
+  farm_id    = "farm-dev-0001"
+  department = "cauca"
+  node_id    = "node-dev-00001"
+}

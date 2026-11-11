@@ -119,3 +119,32 @@ variable "key_deletion_window_in_days" {
     error_message = "key_deletion_window_in_days must be a whole number from 7 to 30."
   }
 }
+
+variable "departments" {
+  description = "Departments of the pilot. Each one gets a thing group."
+  type        = set(string)
+
+  validation {
+    condition     = length(var.departments) > 0 && alltrue([for department in var.departments : can(regex("^[a-z0-9-]{1,32}$", department))])
+    error_message = "departments must list at least one code of lowercase letters, digits or hyphens."
+  }
+}
+
+variable "sample_farm" {
+  description = "Sample farm of the environment. Its certificate request lives in sample-node.csr next to this file."
+  type = object({
+    farm_id    = string
+    department = string
+    node_id    = string
+  })
+
+  validation {
+    condition     = contains(var.departments, var.sample_farm.department)
+    error_message = "sample_farm.department must be one of departments."
+  }
+
+  validation {
+    condition     = startswith(var.sample_farm.node_id, "node-${var.environment}-")
+    error_message = "sample_farm.node_id must start with node-<environment>-, so each environment keeps its own node."
+  }
+}
