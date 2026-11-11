@@ -226,3 +226,15 @@ locals {
     },
   ]
 }
+
+# Inputs of the cloud firewall rules in the security module.
+locals {
+  # Logistics range 10.X.3.0/24 and local server range 10.X.10.0/24 of each linked center, in a fixed order.
+  center_cidrs = flatten([for octet in sort([for center in var.linked_centers : tostring(center)]) : ["10.${octet}.3.0/24", "10.${octet}.10.0/24"]])
+
+  # Subnets that receive traffic from the centers. The rest stay closed.
+  open_subnet_purposes = ["telemetry-ingress", "drone-ingress", "application"]
+
+  open_subnet_ids   = [for key, subnet in local.subnets : module.network.subnet_ids[key] if contains(local.open_subnet_purposes, subnet.purpose)]
+  closed_subnet_ids = [for key, subnet in local.subnets : module.network.subnet_ids[key] if !contains(local.open_subnet_purposes, subnet.purpose)]
+}

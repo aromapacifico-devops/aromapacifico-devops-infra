@@ -95,6 +95,7 @@ The target design gives each environment its own account inside a seven-account 
 | Range | 10.50.0.0/16 | 10.60.0.0/16 | 10.70.0.0/16 |
 | Availability zones | One | One | Two |
 | VPN links and interface endpoints | Off, turned on for a session | Off, turned on for a session | On |
+| Linked centers | None, so the ingress subnets admit nothing | Cauca (41) | Cauca (41), Huila (42) and Tolima (43) |
 | Destroy removes data | Yes | Yes | Yes in the demonstration, no in the pilot |
 | State bucket | `fnc-aroma-dev-s3-tfstate` | `fnc-aroma-test-s3-tfstate` | `fnc-aroma-prod-s3-tfstate` |
 | Platform key | `alias/fnc-aroma-dev-kms-platform` | `alias/fnc-aroma-test-kms-platform` | `alias/fnc-aroma-prod-kms-platform` |
@@ -112,8 +113,9 @@ Only `terraform.tfvars` changes between environments, and no value in it is a se
 | `availability_zones` | It lists fewer than one or more than three zones, repeats a zone, or names a zone of another Region |
 | `common_tags` | A mandatory tag is missing, `Client`, `Project` or `Environment` differ from the governance variables, `CostCenter` is outside the documented cost centers, or `ManagedBy` is not `Terraform` |
 | `client`, `project`, `environment` | They break the code patterns the modules expect |
+| `linked_centers` | It holds a value other than 41, 42 or 43, or repeats one |
 
-`enable_center_link` and `enable_private_endpoints` default to `false`, and `force_destroy_data` defaults to `false` so that a root without values never deletes data. The environment files set them as the table above shows.
+`linked_centers` decides which collection centers the cloud firewall admits, through the logistics range `10.X.3.0/24` and the local server range `10.X.10.0/24` of each one. It defaults to no center. `enable_center_link` and `enable_private_endpoints` default to `false`, and `force_destroy_data` defaults to `false` so that a root without values never deletes data. The environment files set them as the table above shows.
 
 ### Telemetry ingestion and the sample farm
 

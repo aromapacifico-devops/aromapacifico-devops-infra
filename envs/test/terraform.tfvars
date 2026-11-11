@@ -9,6 +9,7 @@ availability_zones = ["us-east-1a"]
 
 # Billed items stay off. Turn them on for a session that validates the center link or the endpoints.
 enable_center_link       = false
+linked_centers           = [41]
 enable_private_endpoints = false
 
 # Holds no real data, so a destroy may remove it.
