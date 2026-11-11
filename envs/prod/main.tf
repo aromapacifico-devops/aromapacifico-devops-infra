@@ -54,7 +54,7 @@ module "security" {
 
 module "telemetry_ingestion" {
   #checkov:skip=CKV_TF_1:Release tags cannot move or be deleted, see docs/iac-exceptions.md
-  source = "git::https://github.com/aromapacifico-devops/terraform-aws-telemetry-ingestion.git?ref=v1.0.0"
+  source = "git::https://github.com/aromapacifico-devops/terraform-aws-telemetry-ingestion.git?ref=v1.0.1"
 
   providers = {
     aws.project = aws.principal
