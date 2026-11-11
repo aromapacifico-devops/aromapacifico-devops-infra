@@ -146,7 +146,25 @@ The state buckets live in bootstrap, so destroying an environment keeps its stat
 | Access | The bucket policy refuses requests without TLS and any principal other than the pipeline roles of its environment and the account operators. A role of another environment receives an explicit deny |
 | Public access | Blocked, with ACLs disabled |
 
-Pipeline roles must be named `fnc-aroma-<env>-role-pipeline-<purpose>`, since the bucket policy recognizes them by that pattern. Bootstrap keeps its own state in `fnc-aroma-shared-s3-tfstate` under `shared/us-east-1/bootstrap/terraform.tfstate`, with a fourth platform key.
+Pipeline roles must be named `fnc-aroma-<env>-role-pipeline-<purpose>`, since the bucket policy recognizes them by that pattern. Bootstrap keeps its own state in `fnc-aroma-shared-s3-tfstate` under `shared/us-east-1/bootstrap/terraform.tfstate`, with a fourth platform key. Every bucket policy also admits the bootstrap role, since bootstrap manages every bucket.
+
+### Pipeline identities
+
+Workflows reach AWS through the one GitHub OIDC provider of the account, with no stored keys. Each role trusts a single GitHub environment of this repository, so a workflow gets a role only when its job runs in that environment.
+
+| Role | Trusted GitHub environment | Permissions | Used by |
+|---|---|---|---|
+| `fnc-aroma-<env>-role-pipeline-plan` | `plan-<env>`, no reviewers | Read the account, state and saved plans of its environment, decrypt table items through DynamoDB | Plans of pull requests and drift |
+| `fnc-aroma-<env>-role-pipeline-apply` | `<env>`. `prod` needs one of the team as reviewer and accepts only `main` | Create and remove the resources of its environment | Deploy, destroy and smoke test |
+| `fnc-aroma-shared-role-pipeline-bootstrap` | `shared`, same reviewers and branch rule as `prod` | Create and update the shared resources | Bootstrap workflow |
+
+The trust checks the audience `sts.amazonaws.com` and the full subject of the token. The repository uses the immutable subject format, which carries the owner and repository IDs, so a renamed or recreated repository with the same name cannot assume a role.
+
+```text
+repo:aromapacifico-devops@352295207/aromapacifico-devops-infra@1446256508:environment:<name>
+```
+
+Plans run in separate `plan-<env>` environments because a job that names `prod` waits for its reviewers, and a plan on every pull request would then wait too.
 
 ## 6. From a change to production
 
@@ -193,7 +211,11 @@ No destroy runs on a schedule. The person who brought an environment up takes it
 
 ### First bootstrap run
 
-Bootstrap costs about USD 4 a month while it exists, at USD 1 for each of the four platform keys, and the state objects weigh a few kilobytes. It creates the bucket that holds its own state, so the first run on an empty account starts with local state and then moves it.
+Bootstrap costs about USD 4 a month while it exists, at USD 1 for each of the four platform keys, and the state objects weigh a few kilobytes. IAM roles, the OIDC provider and the budget have no charge. It creates the bucket that holds its own state, so the first run on an empty account starts with local state and then moves it. The budget sends its alerts to an address that never enters a committed file. Pass it through the environment, and the bootstrap workflow reads it from the `BUDGET_ALERT_EMAIL` secret of the `shared` environment.
+
+```bash
+export TF_VAR_budget_alert_email=<address>
+```
 
 ```bash
 cd bootstrap
