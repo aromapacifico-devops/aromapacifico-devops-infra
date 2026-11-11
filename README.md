@@ -114,8 +114,17 @@ Only `terraform.tfvars` changes between environments, and no value in it is a se
 | `common_tags` | A mandatory tag is missing, `Client`, `Project` or `Environment` differ from the governance variables, `CostCenter` is outside the documented cost centers, or `ManagedBy` is not `Terraform` |
 | `client`, `project`, `environment` | They break the code patterns the modules expect |
 | `linked_centers` | It holds a value other than 41, 42 or 43, or repeats one |
+| `center_link_ips` | It holds an address for a center that is not in `linked_centers`, or `enable_center_link` is true and a center of `linked_centers` has no address. The network module also rejects an address that is not a valid public IPv4 address and a repeated address |
 
 `linked_centers` decides which collection centers the cloud firewall admits, through the logistics range `10.X.3.0/24` and the local server range `10.X.10.0/24` of each one. It defaults to no center. `enable_center_link` and `enable_private_endpoints` default to `false`, and `force_destroy_data` defaults to `false` so that a root without values never deletes data. The environment files set them as the table above shows.
+
+### Link to the collection centers
+
+`enable_center_link` creates the VPN link of the network module, version 1.1.0, for the centers in `linked_centers`. With it `false`, the default, no VPN resource is planned and the network is the one of version 1.0.0. With it `true`, every center in `linked_centers` needs its static public address in `center_link_ips`, keyed by the department code as a string, and the plan fails when one is missing. A center is never skipped, and an address for a center that is not requested is rejected. The addresses come from the provider of each center and no value is invented in this repository.
+
+Production has `enable_center_link = true` with the centers 41, 42 and 43. Its plan therefore stops at the validation of `center_link_ips` until the three addresses are known. That block is expected, and it is not hidden by turning the link off. A demonstration address of the range 203.0.113.0/24 may be passed with `-var` to see the shape of a plan, and it must be named as a demonstration wherever the plan is shown and never applied. The link outputs list the connection, the tunnel addresses, the secret that holds the keys and the routed ranges. No key is an output, and the keys stay in Secrets Manager.
+
+The link carries traffic only. The names that a center uses for IoT Core, S3 and the private API, the port of the IoT Core endpoint and the host that the upload function signs for S3 are open in the design and are outside this root.
 
 ### Telemetry ingestion and the sample farm
 
