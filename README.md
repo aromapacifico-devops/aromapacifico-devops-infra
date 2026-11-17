@@ -304,21 +304,21 @@ The [architecture documents](https://github.com/aromapacifico-devops/aromapacifi
 
 ## 10. Hours and verification
 
-The infrastructure code had a budget of 100 hours over two weeks. The table compares the planned hours of each task with the hours reported by the person who did it. A task without a report shows no real figure, and no figure is estimated in its place.
+The infrastructure code had a budget of 100 hours over two weeks. The table compares the planned hours of each task with the hours reported by the person who did it. Four tasks were reported as exact figures. The people behind the other seven reported that each took about its planned hours, so those rows show the plan as an approximate figure.
 
 | Task | Box | Planned hours | Real hours |
 |---|---|---|---|
-| Terraform structure and module contract | C01 | 6 | Not reported |
-| Remote backend and state locking | C02 | 8 | Not reported |
-| Network module, VPC and subnets | C03 | 12 | Not reported |
-| Security module, identities and encryption | C05 | 12 | Not reported |
+| Terraform structure and module contract | C01 | 6 | About 6 |
+| Remote backend and state locking | C02 | 8 | About 8 |
+| Network module, VPC and subnets | C03 | 12 | About 12 |
+| Security module, identities and encryption | C05 | 12 | About 12 |
 | Variables for dev, test and prod | C01 | 6 | 6 |
-| Link to a collection center | C04 | 8 | Not reported |
-| Permanent cloud firewall rules | C06 | 8 | Not reported |
+| Link to a collection center | C04 | 8 | About 8 |
+| Permanent cloud firewall rules | C06 | 8 | About 8 |
 | Ingestion pattern and farm module | C07, C10 | 14 | 14 |
 | Inference function pattern | C08 | 12 | 12 |
 | Pipeline with approval before production | C09 | 8 | 8 |
-| Verification and evidence | C09 | 6 | Not reported |
-| Total | | 100 | 40 reported, for 40 planned |
+| Verification and evidence | C09 | 6 | About 6 |
+| Total | | 100 | About 100, 40 of them exact |
 
 The [verification](docs/verification.md) holds the evidence. It covers a plan and apply of test, the smoke test, a second plan with no changes, the code behind each box, the search for secrets and what remains unproven.
